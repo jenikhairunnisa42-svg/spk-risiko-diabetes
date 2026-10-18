@@ -1,9 +1,8 @@
-
+```python
 import streamlit as st
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import make_pipeline
+from sklearn.metrics import pairwise_distances
 
 st.set_page_config(
     page_title="SPK Prediksi Risiko Diabetes",
@@ -13,9 +12,11 @@ st.set_page_config(
 
 st.title("🩺 SPK Prediksi Risiko Diabetes")
 st.write("Sistem Pendukung Keputusan menggunakan metode K-Nearest Neighbors (KNN)")
+st.info("Aplikasi ini merupakan simulasi tugas kuliah, bukan alat diagnosis medis.")
 
-
-# Data pasien awal
+# =====================================
+# 1. DATASET PASIEN AWAL
+# =====================================
 data = {
     "Pasien": ["P01", "P02", "P03", "P04", "P05",
                "P06", "P07", "P08", "P09", "P10"],
@@ -30,57 +31,65 @@ data = {
 
 df = pd.DataFrame(data)
 
-# Membuat model KNN
-fitur = ["Usia", "BMI", "Glukosa", "Tekanan Darah", "Riwayat Keluarga"]
-X = df[fitur]
-y = df["Risiko"]
+fitur = [
+    "Usia",
+    "BMI",
+    "Glukosa",
+    "Tekanan Darah",
+    "Riwayat Keluarga"
+]
 
-model = make_pipeline(
-    StandardScaler(),
-    KNeighborsClassifier(n_neighbors=3)
-)
-model.fit(X, y)
-
-# Menyimpan riwayat prediksi selama sesi aplikasi
-if "riwayat" not in st.session_state:
-    st.session_state.riwayat = []
-
-
-# Tabel data awal
-st.subheader("📋 Tabel Data Pasien")
-st.dataframe(df, use_container_width=True, hide_index=True)
-
-# Input pasien baru
+# =====================================
+# 2. FORM INPUT PASIEN
+# =====================================
 st.subheader("📝 Input Data Pasien Baru")
 
 with st.form("form_pasien"):
-    nama = st.text_input("Nama atau kode pasien", placeholder="Contoh: P11")
+    nama = st.text_input(
+        "Nama atau kode pasien",
+        placeholder="Contoh: P11"
+    )
 
     kolom1, kolom2 = st.columns(2)
 
     with kolom1:
-        usia = st.number_input("Usia (tahun)", min_value=1, max_value=120, value=42)
-        bmi = st.number_input("BMI", min_value=10.0, max_value=70.0,
-                              value=28.5, step=0.1)
-        glukosa = st.number_input("Glukosa (mg/dL)", min_value=20,
-                                  max_value=600, value=130)
-
-    with kolom2:
-        tekanan = st.number_input("Tekanan Darah (mmHg)",
-                                  min_value=40, max_value=250, value=128)
-        riwayat = st.selectbox(
-            "Riwayat Diabetes Keluarga",
-            options=[0, 1],
-            format_func=lambda x: "Ada (1)" if x == 1 else "Tidak Ada (0)"
+        usia = st.number_input(
+            "Usia (tahun)", 1, 120, 42
+        )
+        bmi = st.number_input(
+            "BMI", 10.0, 70.0, 28.5, step=0.1
+        )
+        glukosa = st.number_input(
+            "Glukosa (mg/dL)", 20, 600, 130
         )
 
-    tombol = st.form_submit_button("🔍 Prediksi Risiko Diabetes")
+    with kolom2:
+        tekanan = st.number_input(
+            "Tekanan Darah (mmHg)", 40, 250, 128
+        )
+        riwayat = st.selectbox(
+            "Riwayat Diabetes Keluarga",
+            [0, 1],
+            format_func=lambda x:
+                "Ada (1)" if x == 1 else "Tidak Ada (0)"
+        )
 
+    tombol = st.form_submit_button(
+        "🔍 Prediksi Risiko Diabetes"
+    )
+
+# Simpan riwayat prediksi selama sesi aktif
+if "riwayat" not in st.session_state:
+    st.session_state.riwayat = []
+
+# =====================================
+# 3. PERHITUNGAN KNN
+# =====================================
 if tombol:
     if not nama.strip():
         st.warning("Masukkan nama atau kode pasien terlebih dahulu.")
     else:
-        input_pasien = pd.DataFrame([{
+        pasien_baru = pd.DataFrame([{
             "Usia": usia,
             "BMI": bmi,
             "Glukosa": glukosa,
@@ -88,49 +97,180 @@ if tombol:
             "Riwayat Keluarga": riwayat
         }])
 
-        hasil = model.predict(input_pasien)[0]
-        probabilitas = model.predict_proba(input_pasien)[0]
-        keyakinan = max(probabilitas) * 100
+        # Standardisasi data
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(df[fitur])
+        pasien_scaled = scaler.transform(pasien_baru[fitur])
 
-        pasien_baru = {
+        # Menghitung jarak Euclidean
+        jarak = pairwise_distances(
+            pasien_scaled,
+            X_scaled,
+            metric="euclidean"
+        )[0]
+
+        ranking = df[["Pasien", "Risiko"]].copy()
+        ranking["Jarak"] = jarak
+
+        ranking = ranking.sort_values(
+            "Jarak"
+        ).reset_index(drop=True)
+
+        ranking.insert(
+            0, "Peringkat",
+            range(1, len(ranking) + 1)
+        )
+
+        # Mengambil tiga tetangga terdekat
+        tetangga = ranking.head(3).copy()
+
+        jumlah_rendah = (
+            tetangga["Risiko"] == "Rendah"
+        ).sum()
+
+        jumlah_tinggi = (
+            tetangga["Risiko"] == "Tinggi"
+        ).sum()
+
+        hasil = (
+            "Rendah"
+            if jumlah_rendah > jumlah_tinggi
+            else "Tinggi"
+        )
+
+        # =====================================
+        # 4. DATA PASIEN BARU
+        # =====================================
+        st.divider()
+        st.subheader("👤 Data Pasien Baru")
+
+        tampilan_pasien = pd.DataFrame({
+            "Atribut": [
+                "Usia",
+                "BMI",
+                "Glukosa",
+                "Tekanan Darah",
+                "Riwayat Keluarga"
+            ],
+            "Nilai": [
+                usia,
+                bmi,
+                glukosa,
+                tekanan,
+                "Ada" if riwayat == 1 else "Tidak Ada"
+            ]
+        })
+
+        st.table(tampilan_pasien)
+
+        # =====================================
+        # 5. RANKING JARAK
+        # =====================================
+        st.subheader("📏 Ranking Jarak (K = 3)")
+
+        ranking_tampil = ranking.copy()
+        ranking_tampil["Jarak"] = (
+            ranking_tampil["Jarak"].round(4)
+        )
+
+        st.dataframe(
+            ranking_tampil,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        # =====================================
+        # 6. TIGA TETANGGA TERDEKAT
+        # =====================================
+        st.subheader("🏆 3 Tetangga Terdekat")
+
+        tetangga_tampil = tetangga[
+            ["Pasien", "Jarak", "Risiko"]
+        ].copy()
+
+        tetangga_tampil["Jarak"] = (
+            tetangga_tampil["Jarak"].round(4)
+        )
+
+        st.dataframe(
+            tetangga_tampil,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        # =====================================
+        # 7. PERHITUNGAN SUARA
+        # =====================================
+        st.subheader("🗳️ Perhitungan Suara Kelas")
+
+        kolom1, kolom2 = st.columns(2)
+
+        kolom1.metric(
+            "Risiko Rendah",
+            int(jumlah_rendah)
+        )
+
+        kolom2.metric(
+            "Risiko Tinggi",
+            int(jumlah_tinggi)
+        )
+
+        st.write(
+            f"Risiko Rendah: {jumlah_rendah} suara"
+        )
+        st.write(
+            f"Risiko Tinggi: {jumlah_tinggi} suara"
+        )
+
+        # =====================================
+        # 8. HASIL PREDIKSI
+        # =====================================
+        st.subheader("🎯 HASIL PREDIKSI")
+
+        if hasil == "Tinggi":
+            st.warning(
+                f"Pasien {nama.strip()} — Hasil simulasi: Risiko Tinggi"
+            )
+        else:
+            st.success(
+                f"Pasien {nama.strip()} — Hasil simulasi: Risiko Rendah"
+            )
+
+        st.caption(
+            "Hasil bergantung pada dataset simulasi dan bukan "
+            "diagnosis medis."
+        )
+
+        # Simpan ke riwayat
+        st.session_state.riwayat.append({
             "Pasien": nama.strip(),
             "Usia": usia,
             "BMI": bmi,
             "Glukosa": glukosa,
             "Tekanan Darah": tekanan,
-            "Riwayat Keluarga": riwayat,
+            "Riwayat Keluarga": (
+                "Ada" if riwayat == 1 else "Tidak Ada"
+            ),
             "Risiko": hasil
-        }
+        })
 
-        st.session_state.riwayat.append(pasien_baru)
-
-        st.subheader("📌 Hasil Prediksi Pasien")
-        st.write(f"**Kode pasien:** {nama.strip()}")
-
-        if hasil == "Tinggi":
-            st.warning("Hasil simulasi KNN: Risiko Tinggi")
-        else:
-            st.success("Hasil simulasi KNN: Risiko Rendah")
-
-        st.write(f"Skor proporsi suara kelas mayoritas KNN: {keyakinan:.1f}%")
-        st.caption(
-            "Skor ini bukan probabilitas klinis. Hasil hanya berdasarkan "
-            "dataset simulasi yang digunakan."
-        )
-
-# Riwayat prediksi
-st.subheader("📑 Tabel Riwayat Prediksi")
+# =====================================
+# 9. RIWAYAT PREDIKSI
+# =====================================
+st.divider()
+st.subheader("📑 Riwayat Prediksi")
 
 if st.session_state.riwayat:
-    riwayat_df = pd.DataFrame(st.session_state.riwayat)
-    st.dataframe(riwayat_df, use_container_width=True, hide_index=True)
-
-    csv = riwayat_df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        "⬇️ Download Riwayat Prediksi (CSV)",
-        data=csv,
-        file_name="riwayat_prediksi_diabetes.csv",
-        mime="text/csv"
+    riwayat_df = pd.DataFrame(
+        st.session_state.riwayat
     )
+
+    st.dataframe(
+        riwayat_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
 else:
     st.caption("Belum ada pasien baru yang diprediksi.")
+```
