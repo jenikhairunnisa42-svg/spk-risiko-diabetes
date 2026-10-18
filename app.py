@@ -13,7 +13,7 @@ st.set_page_config(
 
 st.title("🩺 SPK Prediksi Risiko Diabetes")
 st.write("Sistem Pendukung Keputusan menggunakan metode K-Nearest Neighbors (KNN)")
-st.info("Aplikasi simulasi untuk tugas kuliah, bukan alat diagnosis medis.")
+
 
 # Data pasien awal
 data = {
