@@ -272,4 +272,3 @@ if st.session_state.riwayat:
 
 else:
     st.caption("Belum ada pasien baru yang diprediksi.")
-```
