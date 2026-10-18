@@ -45,12 +45,6 @@ model.fit(X, y)
 if "riwayat" not in st.session_state:
     st.session_state.riwayat = []
 
-# Ringkasan data
-st.subheader("📊 Ringkasan Dataset")
-kolom1, kolom2, kolom3 = st.columns(3)
-kolom1.metric("Total Pasien Awal", len(df))
-kolom2.metric("Risiko Rendah", (df["Risiko"] == "Rendah").sum())
-kolom3.metric("Risiko Tinggi", (df["Risiko"] == "Tinggi").sum())
 
 # Tabel data awal
 st.subheader("📋 Tabel Data Pasien")
