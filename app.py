@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import make_pipeline
+from scikit-learn.preprocessing import StandardScaler
+from scikit-learn.neighbors import KNeighborsClassifier
+from scikit-learn.pipeline import make_pipeline
 
 # Konfigurasi halaman
 st.set_page_config(
