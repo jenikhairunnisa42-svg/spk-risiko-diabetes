@@ -3,6 +3,9 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import pairwise_distances
 
+# =====================================
+# PENGATURAN HALAMAN
+# =====================================
 st.set_page_config(
     page_title="SPK Prediksi Risiko Diabetes",
     page_icon="🩺",
@@ -10,21 +13,43 @@ st.set_page_config(
 )
 
 st.title("🩺 SPK Prediksi Risiko Diabetes")
-st.write("Sistem Pendukung Keputusan menggunakan metode K-Nearest Neighbors (KNN)")
+st.write(
+    "Sistem Pendukung Keputusan menggunakan "
+    "metode K-Nearest Neighbors (KNN)"
+)
+st.info(
+    "Aplikasi simulasi untuk tugas kuliah, "
+    "bukan alat diagnosis medis."
+)
 
 # =====================================
 # 1. DATASET PASIEN AWAL
 # =====================================
 data = {
-    "Pasien": ["P01", "P02", "P03", "P04", "P05",
-               "P06", "P07", "P08", "P09", "P10"],
+    "Pasien": [
+        "P01", "P02", "P03", "P04", "P05",
+        "P06", "P07", "P08", "P09", "P10"
+    ],
     "Usia": [25, 30, 35, 40, 45, 50, 55, 28, 38, 48],
-    "BMI": [21.5, 23.1, 25.0, 27.5, 30.2, 31.5, 33.0, 22.5, 26.8, 29.5],
-    "Glukosa": [90, 95, 105, 120, 140, 155, 165, 92, 115, 145],
-    "Tekanan Darah": [110, 115, 120, 125, 135, 140, 145, 112, 122, 130],
-    "Riwayat Keluarga": [0, 0, 0, 1, 1, 1, 1, 0, 0, 1],
-    "Risiko": ["Rendah", "Rendah", "Rendah", "Tinggi", "Tinggi",
-               "Tinggi", "Tinggi", "Rendah", "Rendah", "Tinggi"]
+    "BMI": [
+        21.5, 23.1, 25.0, 27.5, 30.2,
+        31.5, 33.0, 22.5, 26.8, 29.5
+    ],
+    "Glukosa": [
+        90, 95, 105, 120, 140,
+        155, 165, 92, 115, 145
+    ],
+    "Tekanan Darah": [
+        110, 115, 120, 125, 135,
+        140, 145, 112, 122, 130
+    ],
+    "Riwayat Keluarga": [
+        0, 0, 0, 1, 1, 1, 1, 0, 0, 1
+    ],
+    "Risiko": [
+        "Rendah", "Rendah", "Rendah", "Tinggi", "Tinggi",
+        "Tinggi", "Tinggi", "Rendah", "Rendah", "Tinggi"
+    ]
 }
 
 df = pd.DataFrame(data)
@@ -38,8 +63,25 @@ fitur = [
 ]
 
 # =====================================
-# 2. FORM INPUT PASIEN
+# 2. TABEL DATA PASIEN AWAL
 # =====================================
+st.subheader("📋 Tabel Data Pasien")
+st.dataframe(
+    df,
+    use_container_width=True,
+    hide_index=True
+)
+
+# =====================================
+# 3. RIWAYAT PREDIKSI
+# =====================================
+if "riwayat" not in st.session_state:
+    st.session_state.riwayat = []
+
+# =====================================
+# 4. FORM INPUT PASIEN BARU
+# =====================================
+st.divider()
 st.subheader("📝 Input Data Pasien Baru")
 
 with st.form("form_pasien"):
@@ -52,22 +94,38 @@ with st.form("form_pasien"):
 
     with kolom1:
         usia = st.number_input(
-            "Usia (tahun)", 1, 120, 42
+            "Usia (tahun)",
+            min_value=1,
+            max_value=120,
+            value=42
         )
+
         bmi = st.number_input(
-            "BMI", 10.0, 70.0, 28.5, step=0.1
+            "BMI",
+            min_value=10.0,
+            max_value=70.0,
+            value=28.5,
+            step=0.1
         )
+
         glukosa = st.number_input(
-            "Glukosa (mg/dL)", 20, 600, 130
+            "Glukosa (mg/dL)",
+            min_value=20,
+            max_value=600,
+            value=130
         )
 
     with kolom2:
         tekanan = st.number_input(
-            "Tekanan Darah (mmHg)", 40, 250, 128
+            "Tekanan Darah (mmHg)",
+            min_value=40,
+            max_value=250,
+            value=128
         )
+
         riwayat = st.selectbox(
             "Riwayat Diabetes Keluarga",
-            [0, 1],
+            options=[0, 1],
             format_func=lambda x:
                 "Ada (1)" if x == 1 else "Tidak Ada (0)"
         )
@@ -76,16 +134,15 @@ with st.form("form_pasien"):
         "🔍 Prediksi Risiko Diabetes"
     )
 
-# Simpan riwayat prediksi selama sesi aktif
-if "riwayat" not in st.session_state:
-    st.session_state.riwayat = []
-
 # =====================================
-# 3. PERHITUNGAN KNN
+# 5. PROSES PERHITUNGAN KNN
 # =====================================
 if tombol:
     if not nama.strip():
-        st.warning("Masukkan nama atau kode pasien terlebih dahulu.")
+        st.warning(
+            "Masukkan nama atau kode pasien terlebih dahulu."
+        )
+
     else:
         pasien_baru = pd.DataFrame([{
             "Usia": usia,
@@ -95,10 +152,14 @@ if tombol:
             "Riwayat Keluarga": riwayat
         }])
 
-        # Standardisasi data
+        # Standardisasi data pasien awal
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(df[fitur])
-        pasien_scaled = scaler.transform(pasien_baru[fitur])
+
+        # Standardisasi data pasien baru
+        pasien_scaled = scaler.transform(
+            pasien_baru[fitur]
+        )
 
         # Menghitung jarak Euclidean
         jarak = pairwise_distances(
@@ -107,37 +168,39 @@ if tombol:
             metric="euclidean"
         )[0]
 
+        # Membuat tabel ranking jarak
         ranking = df[["Pasien", "Risiko"]].copy()
         ranking["Jarak"] = jarak
 
         ranking = ranking.sort_values(
-            "Jarak"
+            by="Jarak"
         ).reset_index(drop=True)
 
         ranking.insert(
-            0, "Peringkat",
+            0,
+            "Peringkat",
             range(1, len(ranking) + 1)
         )
 
-        # Mengambil tiga tetangga terdekat
+        # Mengambil 3 tetangga terdekat
         tetangga = ranking.head(3).copy()
 
-        jumlah_rendah = (
-            tetangga["Risiko"] == "Rendah"
-        ).sum()
-
-        jumlah_tinggi = (
-            tetangga["Risiko"] == "Tinggi"
-        ).sum()
-
-        hasil = (
-            "Rendah"
-            if jumlah_rendah > jumlah_tinggi
-            else "Tinggi"
+        jumlah_rendah = int(
+            (tetangga["Risiko"] == "Rendah").sum()
         )
 
+        jumlah_tinggi = int(
+            (tetangga["Risiko"] == "Tinggi").sum()
+        )
+
+        # Menentukan hasil mayoritas
+        if jumlah_rendah > jumlah_tinggi:
+            hasil = "Rendah"
+        else:
+            hasil = "Tinggi"
+
         # =====================================
-        # 4. DATA PASIEN BARU
+        # 6. DATA PASIEN BARU
         # =====================================
         st.divider()
         st.subheader("👤 Data Pasien Baru")
@@ -162,7 +225,7 @@ if tombol:
         st.table(tampilan_pasien)
 
         # =====================================
-        # 5. RANKING JARAK
+        # 7. RANKING JARAK
         # =====================================
         st.subheader("📏 Ranking Jarak (K = 3)")
 
@@ -178,7 +241,7 @@ if tombol:
         )
 
         # =====================================
-        # 6. TIGA TETANGGA TERDEKAT
+        # 8. TIGA TETANGGA TERDEKAT
         # =====================================
         st.subheader("🏆 3 Tetangga Terdekat")
 
@@ -197,7 +260,7 @@ if tombol:
         )
 
         # =====================================
-        # 7. PERHITUNGAN SUARA
+        # 9. PERHITUNGAN SUARA KELAS
         # =====================================
         st.subheader("🗳️ Perhitungan Suara Kelas")
 
@@ -205,41 +268,46 @@ if tombol:
 
         kolom1.metric(
             "Risiko Rendah",
-            int(jumlah_rendah)
+            jumlah_rendah
         )
 
         kolom2.metric(
             "Risiko Tinggi",
-            int(jumlah_tinggi)
+            jumlah_tinggi
         )
 
         st.write(
             f"Risiko Rendah: {jumlah_rendah} suara"
         )
+
         st.write(
             f"Risiko Tinggi: {jumlah_tinggi} suara"
         )
 
         # =====================================
-        # 8. HASIL PREDIKSI
+        # 10. HASIL PREDIKSI
         # =====================================
         st.subheader("🎯 HASIL PREDIKSI")
 
         if hasil == "Tinggi":
             st.warning(
-                f"Pasien {nama.strip()} — Hasil simulasi: Risiko Tinggi"
+                f"Pasien {nama.strip()} — "
+                "Hasil simulasi: Risiko Tinggi"
             )
         else:
             st.success(
-                f"Pasien {nama.strip()} — Hasil simulasi: Risiko Rendah"
+                f"Pasien {nama.strip()} — "
+                "Hasil simulasi: Risiko Rendah"
             )
 
         st.caption(
-            "Hasil bergantung pada dataset simulasi dan bukan "
-            "diagnosis medis."
+            "Hasil ini berdasarkan dataset simulasi, "
+            "bukan diagnosis medis."
         )
 
-        # Simpan ke riwayat
+        # =====================================
+        # 11. SIMPAN RIWAYAT
+        # =====================================
         st.session_state.riwayat.append({
             "Pasien": nama.strip(),
             "Usia": usia,
@@ -253,10 +321,10 @@ if tombol:
         })
 
 # =====================================
-# 9. RIWAYAT PREDIKSI
+# 12. TABEL RIWAYAT PREDIKSI
 # =====================================
 st.divider()
-st.subheader("📑 Riwayat Prediksi")
+st.subheader("📑 Tabel Riwayat Prediksi")
 
 if st.session_state.riwayat:
     riwayat_df = pd.DataFrame(
@@ -268,6 +336,7 @@ if st.session_state.riwayat:
         use_container_width=True,
         hide_index=True
     )
-
 else:
-    st.caption("Belum ada pasien baru yang diprediksi.")
+    st.caption(
+        "Belum ada pasien baru yang diprediksi."
+    )
