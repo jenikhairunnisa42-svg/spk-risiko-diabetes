@@ -17,10 +17,6 @@ st.write(
     "Sistem Pendukung Keputusan menggunakan "
     "metode K-Nearest Neighbors (KNN)"
 )
-st.info(
-    "Aplikasi simulasi untuk tugas kuliah, "
-    "bukan alat diagnosis medis."
-)
 
 # =====================================
 # 1. DATASET PASIEN AWAL
